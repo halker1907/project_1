@@ -4,12 +4,12 @@ import random
 import sys
 
 # настройки
-COLS = 25
+COLS = 10
 ROWS = 10
-EMPTY = '.'
-PLAYER = 'P'
-ANT = 'a'
-ANTHILL = 'A'
+EMPTY = "."
+PLAYER = "P"
+ANT = "a"
+ANTHILL = "A"
 ANTHILL_MAX = 4
 ANTHILL_MIN = 1
 ANTS_IN_ANTHILL_MAX = 10
@@ -25,7 +25,7 @@ class GameObject:
     def move(self, direction, field): # передвижение объектов
         new_y, new_x = self.y, self.x
 
-        if direction == 'up' and self.y > 0 and not isinstance(field.cells[self.y - 1][self.x].content, Anthill):
+        if direction == "up" and self.y > 0 and not isinstance(field.cells[self.y - 1][self.x].content, Anthill):
             new_y -= 1
         elif direction == "down" and self.y < field.rows - 1 and not isinstance(field.cells[self.y + 1][self.x].content, Anthill):
             new_y += 1
@@ -63,9 +63,9 @@ class Cell:
 
     def draw(self):
         if self.content:
-            print(self.content.image, end=' ')
+            print(self.content.image, end=" ")
         else:
-            print(self.image, end=' ')
+            print(self.image, end=" ")
 
 
 class Player(GameObject):
@@ -79,6 +79,26 @@ class Ant(GameObject):
     def __init__(self, y, x):
         super().__init__(y, x, ANT)
         self.direction = random.choice(["up", "down", "left", "right"])
+    
+    def update_direction(self):
+        self.direction = random.choice(["up", "down", "left", "right"])
+
+    def move(self, field):
+        new_y, new_x = self.y, self.x
+
+
+        if self.direction == "up" and self.y > 0 and not isinstance(field.cells[self.y - 1][self.x].content, Anthill):
+            new_y -= 1
+        elif self.direction == "down" and self.y < field.rows - 1 and not isinstance(field.cells[self.y + 1][self.x].content, Anthill):
+            new_y += 1
+        elif self.direction == "left" and self.x > 0 and not isinstance(field.cells[self.y][self.x - 1].content, Anthill):
+            new_x -= 1
+        elif self.direction == "right" and self.x < field.cols - 1 and not isinstance(field.cells[self.y][self.x + 1].content, Anthill):
+            new_x += 1
+
+        field.cells[self.y][self.x].content = None
+        self.y, self.x = new_y, new_x
+        field.cells[self.y][self.x].content = self
 
 
 class Anthill(GameObject):
@@ -86,9 +106,7 @@ class Anthill(GameObject):
         super().__init__(y, x, ANTHILL)
         self.quantity = quantity
         self.spawn_counter = 0
-        self.ants_counter = random.randint(
-            ANTS_IN_ANTHILL_MIN, ANTS_IN_ANTHILL_MAX
-        )
+        self.ants_counter = ANTS_IN_ANTHILL_MAX
 
     def place(self, field):
         super().place_object(field)
@@ -144,7 +162,7 @@ class Field:
                 # Получаем координаты всех соседних клеток вокруг муравейника
                 neighbors = [
                     (anthill_y - 1, anthill_x - 1), (anthill_y - 1, anthill_x), (anthill_y - 1, anthill_x + 1),
-                    (anthill_y, anthill_x - 1),                                 (anthill_y, anthill_x + 1),
+                    (anthill_y, anthill_x - 1), (anthill_y, anthill_x + 1),
                     (anthill_y + 1, anthill_x - 1), (anthill_y + 1, anthill_x), (anthill_y + 1, anthill_x + 1)
                 ]
 
@@ -170,8 +188,8 @@ class Field:
             for cell in row:
                 if cell.content and isinstance(cell.content, Ant):
                     ant = cell.content
-                    ant.update_direction()
                     ant.move(self)
+                    ant.update_direction()
 
         # Проверка на наличие муравьев во всех муравейниках
         total_ants = sum(anthill.ants_counter for anthill in self.anthills)
@@ -184,10 +202,10 @@ class Field:
 
 def clear_screen():
     """ очистка экрана """
-    if os.name == 'nt':
-        os.system('cls')
+    if os.name == "nt":
+        os.system("cls")
     else:
-        os.system('clear')
+        os.system("clear")
 
 
 class Game:
@@ -196,6 +214,7 @@ class Game:
         self.field.add_anthills()
         self.ants_eaten = 0
         self.ants_escaped = 0
+        self.dop_bals = 0
 
     def keyboard_event(self, event):
         """ события происходящи при нажатии клавиш """
@@ -208,11 +227,11 @@ class Game:
                 self.field.player.move("left", self.field)
             elif event.name == "right":
                 self.field.player.move("right", self.field)
-            elif event.name == 'esc':
+            elif event.name == "esc":
                 print("♦ Вы вышли из игры ♦")
                 return True
             elif event.name == "l" or "k":
-                self.total_ants_eaten += 1
+                self.dop_bals += 1
         return False
 
     def update_game_state(self):
@@ -228,27 +247,27 @@ class Game:
         """ статистика игры """
         self.total_ants_eaten = sum(anthill.quantity - anthill.ants_counter for anthill in self.field.anthills) #всего съедено муравьев
         escaped_ants = ANTS_IN_ANTHILL_MAX - self.total_ants_eaten
-        
 
         print(f"\n♦ Игра закончена! Статистика: ♦")
         print(f"♦ Съедено муравьёв ♦: {self.total_ants_eaten}")
         print(f"♦ Сбежало муравьёв ♦: {escaped_ants}")
+        print(f"♦ Баллов: {self.total_ants_eaten}/{ANTS_IN_ANTHILL_MAX} ♦")
+        print(f"♦ Доплнительные баллы: {self.dop_bals} ♦")
         if self.total_ants_eaten == ANTS_IN_ANTHILL_MAX:
             print("•◘ Результат: Идеально ◘•")
-        elif self.total_ants_eaten <= escaped_ants:
+        elif self.total_ants_eaten + self.dop_bals >= escaped_ants:
             print("•◘ Результат: Хорошо ◘•")
         else:
             print("•◘ Результат: Плохо ◘•")
-        print(f"♦ Баллов: {self.total_ants_eaten}/{ANTS_IN_ANTHILL_MAX}")
 
     def run(self): # запускает игру
         self.field.drawrows()
 
         while not self.field.game_over:
             event = keyboard.read_event(suppress=True)
-            if self.handle_keyboard_event(event):
+            if self.keyboard_event(event):
                 break
-
+            os.system("cls")
             self.update_game_state()
 
 game_run = Game()
